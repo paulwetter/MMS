@@ -1,8 +1,8 @@
-function Find-wsBitLockerKey {
+function Find-wsLapsPassword {
     param ()
 
         If (-not(Get-module -ListAvailable -name Microsoft.Graph)) {
-        write-host "MSOnline module is missing."
+        write-host "MSGraph module is missing."
         write-host "Run from elevated PS: Install-Module Microsoft.Graph -Scope CurrentUser -Repository PSGallery -Force"
         break
     }
@@ -13,27 +13,15 @@ function Find-wsBitLockerKey {
     }
 
     $AppConfig = @{
-        # Define the SCCM Site Server and Site Code
-        ConfigMgr = @{
-            SCCMServer = "WS-CM1.wetter.wetterssource.com"
-            SCCMSQLServer = "WS-CM1.wetter.wetterssource.com"
-            SiteCode = "WS1"
-            CmDatabase = "CM_$SiteCode"
-        }
         # By Default, enable all sources.
         SourcesEnabled = @{
-            Mbam = $true
             AD = $true
-            CM = $true
             MeId = $true    
-        }
-        Mbam = @{
-            MbamUrl = "https://ws-mbam.wetter.wetterssource.com/MBAMAdministrationService/AdministrationService.svc"
         }
     }
 
     $configRoot = "$([Environment]::GetFolderPath('ApplicationData'))\WettersSource"
-    $Configfile = "$configRoot\Find-wsBitLockerKey.json"
+    $Configfile = "$configRoot\Find-wsLapsPassword.json"
 
     
     if (-not (Test-Path -Path $configRoot)) {
@@ -78,142 +66,8 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
     If (!(Test-Path $LogoImage)) {
         [System.IO.File]::WriteAllBytes($LogoImage,$Bytes)
     }
-    #endregion Make Logo
-
-    #region Configure CM Settings
-    Function Set-CMSettings{
-    $xamlConfig = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="ConfigMgr Settings" Height="250" Width="400" WindowStartupLocation="CenterScreen">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        
-        <!-- Labels and Textboxes -->
-        <Label Grid.Row="0" Grid.Column="0" Content="Server:"/>
-        <TextBox Grid.Row="0" Grid.Column="1" Name="SCCMServer" Width="250"/>
-        
-        <Label Grid.Row="1" Grid.Column="0" Content="Database Server:"/>
-        <TextBox Grid.Row="1" Grid.Column="1" Name="SCCMSQLServer" Width="250"/>
-        
-        <Label Grid.Row="2" Grid.Column="0" Content="SiteCode:"/>
-        <TextBox Grid.Row="2" Grid.Column="1" Name="SiteCode" Width="250"/>
-        
-        <!-- Save Button -->
-        <Button Grid.Row="4" Grid.Column="1" Width="100" Height="30" Content="Save" HorizontalAlignment="Right" Name="SaveButton"/>
-    </Grid>
-</Window>
-"@
-        $window = Convert-XAMLtoWindow -XAML $xamlConfig
-        #$configRoot = "$([Environment]::GetFolderPath('ApplicationData'))\WettersSource"
-        #$Configfile = "$configRoot\Find-wsBitLockerKey.json"
-        if (-not (Test-Path -Path $configRoot)) {
-            New-Item -Path $configRoot -ItemType Directory -Force
-        }
-        if (-not (Test-Path -Path $Configfile)) {
-            $AppConfig|ConvertTo-Json|Set-Content -Path $Configfile
-        } else {
-            $content = Get-Content -Path $Configfile -Raw
-            $AppConfig = $content | ConvertFrom-Json
-        }
-        $window.SCCMServer.Text = $AppConfig.ConfigMgr.SCCMServer
-        $window.SCCMSQLServer.Text = $AppConfig.ConfigMgr.SCCMSQLServer
-        $window.SiteCode.Text = $AppConfig.ConfigMgr.SiteCode
-    
-        $window.SaveButton.add_Click{
-            Save-CMConfig
-            [System.Windows.MessageBox]::Show("Settings saved!")
-            $window.Close()
-        }
-    
-        function Save-CMConfig {
-            $AppConfig.ConfigMgr = @{
-                SCCMServer = $window.SCCMServer.Text
-                SCCMSQLServer = $window.SCCMSQLServer.Text
-                SiteCode = $window.SiteCode.Text
-                CmDatabase = "CM_$($window.SiteCode.Text)"
-            }
-            if (-not (Test-Path -Path $configRoot)) {
-                New-Item -Path $configRoot -ItemType Directory -Force
-            }
-            $AppConfig|ConvertTo-Json|Set-Content -Path $Configfile -Force
-        }
-    
-        $null = Show-WPFWindow -Window $window
-    }
-    #endregion configure CM Settings
-
-    #region Configure CM Settings
-    Function Set-MbamSettings{
-        $xamlConfig = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Mbam Settings" Height="250" Width="400" WindowStartupLocation="CenterScreen">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        
-        <!-- Labels and Textboxes -->
-        <Label Grid.Row="0" Grid.Column="0" Content="MbamUrl:"/>
-        <TextBox Grid.Row="0" Grid.Column="1" Name="MbamUrl" Width="300"/>
-        
-        <!-- Save Button -->
-        <Button Grid.Row="4" Grid.Column="1" Width="100" Height="30" Content="Save" HorizontalAlignment="Right" Name="SaveButton"/>
-    </Grid>
-</Window>
-"@
-            $window = Convert-XAMLtoWindow -XAML $xamlConfig
-            #$configRoot = "$([Environment]::GetFolderPath('ApplicationData'))\WettersSource"
-            #$Configfile = "$configRoot\Find-wsBitLockerKey.json"
-            if (-not (Test-Path -Path $configRoot)) {
-                New-Item -Path $configRoot -ItemType Directory -Force
-            }
-            if (-not (Test-Path -Path $Configfile)) {
-                $AppConfig|ConvertTo-Json|Set-Content -Path $Configfile
-            } else {
-                $content = Get-Content -Path $Configfile -Raw
-                $AppConfig = $content | ConvertFrom-Json
-            }
-            $window.MbamUrl.Text = $AppConfig.Mbam.MbamUrl
-        
-            $window.SaveButton.add_Click{
-                Save-MbamConfig
-                [System.Windows.MessageBox]::Show("Settings saved!")
-                $window.Close()
-            }
-        
-            function Save-MbamConfig {
-                $AppConfig.Mbam = @{
-                    MbamUrl = $window.MbamUrl.Text
-                }
-                if (-not (Test-Path -Path $configRoot)) {
-                    New-Item -Path $configRoot -ItemType Directory -Force
-                }
-                $AppConfig|ConvertTo-Json|Set-Content -Path $Configfile -Force
-            }
-        
-            $null = Show-WPFWindow -Window $window
-        }
-    #endregion configure CM Settings
-    
-    Function Write-BitLockerKey {
+    #endregion Make Logo    
+    Function Write-LapsPassword {
         ## Function writes the bitlocker key information to the table in the WPF UI.
         [CmdletBinding()]
         param (
@@ -222,12 +76,18 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
             $Source,
             [Parameter(Mandatory=$True)]
             [String]
-            $KeyId,
+            $Account,
             [Parameter(Mandatory=$True)]
             [String]
-            $RecoveryKey
+            $Computer,
+            [Parameter(Mandatory=$True)]
+            [String]
+            $Password,
+            [Parameter(Mandatory=$True)]
+            [String]
+            $PasswordTime
         )
-        $window.View1.ItemsSource += [PSCustomObject]@{ Source = "$Source"; KeyId = "$KeyId"; RecoveryKey = "$RecoveryKey"}
+        $window.View1.ItemsSource += [PSCustomObject]@{ Source = "$Source"; Computer = "$Computer"; Account = "$Account"; Password = "$Password"; PasswordTime = "$PasswordTime"}
         #$window.View1.ScrollIntoView($window.View1.items.Item(($window.View1.ItemsSource).count - 1))
         $window.Dispatcher.Invoke([action]{},"Render")
     }
@@ -280,7 +140,7 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
 <Window
  xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
  xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
- Title='Find BitLocker Recovery Keys' Width="800"  SizeToContent="Height">
+ Title='Find LAPS Passwords' Width="800"  SizeToContent="Height">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="80" />
@@ -298,9 +158,9 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
                     <RowDefinition Height="42" />
                     <RowDefinition Height="42" />
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Grid.Column="0" TextAlignment="Center" Margin="5">BitLocker Key Id:</TextBlock>
-                <TextBox Grid.Row="0" Grid.Column="1" Name="KeyId" Margin="5" HorizontalAlignment="left" VerticalContentAlignment="center" Width="250" Height="22"/>
-                <Button Grid.Row="0" Grid.Column="2" Name="ButFindKeys" MinWidth="80" Height="22" Margin="2" HorizontalAlignment="Left" FontSize="12" Content="Find Keys" />
+                <TextBlock Grid.Row="0" Grid.Column="0" TextAlignment="Center" Margin="5">Computer Name:</TextBlock>
+                <TextBox Grid.Row="0" Grid.Column="1" Name="ComputerName" Margin="5" HorizontalAlignment="left" VerticalContentAlignment="center" Width="250" Height="22"/>
+                <Button Grid.Row="0" Grid.Column="2" Name="ButFindLaps" MinWidth="80" Height="22" Margin="2" HorizontalAlignment="Left" FontSize="12" Content="Find Password" />
                 <Image Width="201" Height="84" Grid.Row="0" Grid.Column="3" Grid.RowSpan="2" HorizontalAlignment="right" Margin="0">
                     <Image.Source>
                         <BitmapImage DecodePixelWidth="201" UriSource="$LogoImage" />
@@ -310,17 +170,17 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
                 <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock Text="Sources:" Margin="50,0,10,0" />
                 <CheckBox Content="AD" Margin="10,0,10,0" Name="EnableAD" />
-                <CheckBox Content="CM" Margin="10,0,10,0" Name="EnableCM" />
                 <CheckBox Content="ME-ID" Margin="10,0,10,0" Name="EnableMEID" />
-                <CheckBox Content="MBAM" Margin="10,0,10,0" Name="EnableMBAM" />
                 </StackPanel>
             </Grid>
             <ListView Grid.Row="1" Grid.Column="0" Name="View1" SelectionMode="Single">
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Width="250" Header="KeyId" DisplayMemberBinding="{Binding KeyId}"/>
+                        <GridViewColumn Width="100" Header="Computer" DisplayMemberBinding="{Binding Computer}"/>
+                        <GridViewColumn Width="100" Header="Account" DisplayMemberBinding="{Binding Account}"/>
+                        <GridViewColumn Width="200" Header="Password" DisplayMemberBinding="{Binding Password}"/>
                         <GridViewColumn Width="100" Header="Source" DisplayMemberBinding="{Binding Source}"/>
-                        <GridViewColumn Width="375" Header="Recovery Key" DisplayMemberBinding="{Binding RecoveryKey}"/>
+                        <GridViewColumn Width="250" Header="Password Time" DisplayMemberBinding="{Binding PasswordTime}"/>
                     </GridView>
                 </ListView.View>
             </ListView>
@@ -330,9 +190,7 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
                     <ColumnDefinition Width="425"/>
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" HorizontalAlignment="Left" Name='ClearList' MinWidth="80" Margin="3" Content="Clear List" />
-                <Button Grid.Column="0" HorizontalAlignment="Left" Name="ConfigCM" Content="Configure CM" Margin="200,3,3,3"/>
-                <Button Grid.Column="1" HorizontalAlignment="Left" Name="ConfigMbam" Content="Configure MBAM" Margin="3,3,3,3"/>
-                <Button Grid.Column="1" HorizontalAlignment="Right" Name='CopyRecoveryKey' MinWidth="120" Margin="3" Content="Copy Recovery Key" />
+                <Button Grid.Column="1" HorizontalAlignment="Right" Name='CopyLapsPass' MinWidth="120" Margin="3" Content="Copy Password" />
             </Grid>
         </Grid>
     </Window>
@@ -344,17 +202,13 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
 
     #region check what sources are enabled
     $window.EnableAD.IsChecked = $AppConfig.SourcesEnabled.AD
-    $window.EnableCM.IsChecked = $AppConfig.SourcesEnabled.CM
     $window.EnableMEID.IsChecked = $AppConfig.SourcesEnabled.MeId
-    $window.EnableMBAM.IsChecked = $AppConfig.SourcesEnabled.Mbam
     #endregion check sources
 
     #region Enable/Disable Sources
     function Save-SourceConfig {
         $AppConfig.SourcesEnabled = @{
             AD = $window.EnableAD.IsChecked
-            CM = $window.EnableCM.IsChecked
-            Mbam = $window.EnableMBAM.IsChecked
             MeId = $window.EnableMEID.IsChecked
         }
         if (-not (Test-Path -Path $configRoot)) {
@@ -366,12 +220,6 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
     $window.EnableAD.add_Click{
         Save-SourceConfig
     }
-    $window.EnableCM.add_Click{
-        Save-SourceConfig
-    }
-    $window.EnableMBAM.add_Click{
-        Save-SourceConfig
-    }
     $window.EnableMEID.add_Click{
         Save-SourceConfig
     }
@@ -380,54 +228,30 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
 
     #Region Execute Search
     #add a Click action to the Find Keys button.
-    $window.ButFindKeys.add_Click{
+    $window.ButFindLaps.add_Click{
         #change the button to searching....
-        $window.ButFindKeys.Content = "Searching..."
+        $window.ButFindLaps.Content = "Searching..."
         $window.Dispatcher.Invoke([action] {}, "Render")
         #Read the key text from the input box in the dialog
-        $KeyToFind = $window.KeyId.Text
+        $ComputerToFind = $window.ComputerName.Text
 
         If ($AppConfig.SourcesEnabled.MeId -eq $true){
-            $AadKey = Get-MgInformationProtectionBitlockerRecoveryKey -BitlockerRecoveryKeyId "$KeyToFind" -Property Key -ErrorAction SilentlyContinue
-            If(-not [string]::IsNullOrEmpty($AadKey.Key)){
-                Write-BitLockerKey -Source "Entra ID" -KeyId $KeyToFind -RecoveryKey "$($AadKey.Key)"
+            $lapsPass = Get-LapsAADPassword -DeviceIds $ComputerToFind -IncludePasswords -AsPlainText -ErrorAction SilentlyContinue
+            If(-not [string]::IsNullOrEmpty($lapsPass.Password)){
+                Write-LapsPassword -Source "Entra ID" -Computer $lapsPass.DeviceName -Account $lapsPass.Account -Password $lapsPass.Password -PasswordTime $lapsPass.PasswordUpdateTime.ToString()
             }    
         }
 
         if ($AppConfig.SourcesEnabled.AD -eq $true){
-            $rg=Convert-GuidToHexArray -guid "$KeyToFind"
-            $AdKey = Get-ADObject -Filter {objectclass -eq "msFVE-RecoveryInformation" -and msFVE-RecoveryGuid -eq $rg} -Properties msFVE-RecoveryPassword, msFVE-RecoveryGuid | Select-Object @{Name="ComputerName";Expression={(Get-ADComputer -Identity "$(($_.DistinguishedName -split ',')[1..(($_.DistinguishedName -split ',').count -1)] -join ',')").Name}}, @{Name="RecoveryGuid";Expression={[guid]::new($_.'msFVE-RecoveryGuid')}}, msFVE-RecoveryPassword
-            If(-not [string]::IsNullOrEmpty($AdKey.'msFVE-RecoveryPassword')){
-                Write-BitLockerKey -Source "Active Directory" -KeyId $KeyToFind -RecoveryKey "$($AdKey.'msFVE-RecoveryPassword')"
+            $lapsPass = Get-LapsADPassword -Identity $ComputerToFind -AsPlainText -ErrorAction SilentlyContinue
+            If(-not [string]::IsNullOrEmpty($lapsPass.Password)){
+                Write-LapsPassword -Source "Active Directory" -Computer $lapsPass.ComputerName -Account $lapsPass.Account -Password $lapsPass.Password -PasswordTime $lapsPass.PasswordUpdateTime.ToString()
             }    
-        }
-
-        if ($AppConfig.SourcesEnabled.Mbam -eq $true){
-            $MbamKey = Get-MBAMKey -KeyId $KeyToFind -mbamUrl $AppConfig.Mbam.MbamUrl
-            If(-not [string]::IsNullOrEmpty($MbamKey)){
-                Write-BitLockerKey -Source "MBAM" -KeyId $KeyToFind -RecoveryKey "$MbamKey"
-            }    
-        }
-
-        if ($AppConfig.SourcesEnabled.CM -eq $true){
-            $Query = "EXEC RecoveryAndHardwareRead.GetRecoveryKey @RecoveryKeyId='$KeyToFind', @Reason='Other'"
-            $CMKey = Invoke-SqlDataReader -ServerInstance $AppConfig.ConfigMgr.SCCMSQLServer -Database $AppConfig.ConfigMgr.CmDatabase -Query $Query
-            If(-not [string]::IsNullOrEmpty($CMKey.RecoveryKey)){
-                Write-BitLockerKey -Source "ConfigMgr" -KeyId $KeyToFind -RecoveryKey $CMKey.RecoveryKey
-            }
         }
         #set the button back to original text so it shows that its done searching.
-        $window.ButFindKeys.Content = "Find Keys"
+        $window.ButFindLaps.Content = "Find Password"
     }
     #EndRegion Execute Search
-
-    $window.ConfigCM.add_Click{
-        Set-CMSettings
-    }
-
-    $window.ConfigMbam.add_Click{
-        Set-MbamSettings
-    }
 
     #Add click action to button to clear the list of recovered keys.
     $window.ClearList.add_Click{
@@ -450,186 +274,19 @@ M6Q/9bC1yphGWkmW/w8G4sBFGr5oRgAAAABJRU5ErkJggg==
             return $false
         }    
     }
-    function Convert-GuidToHexArray {
-        # Active Directory needs guids in hex arrays to search for them.  This function converts the guid to a proper hex array.
-        param (
-            [string]$guid
-        )
-    
-        # Convert the string GUID to a .NET Guid object
-        $guidBytes = [Guid]::Parse($guid).ToByteArray()
-    
-        # Convert each byte to a hexadecimal string and concatenate it in the required format
-        $hexString = ""
-        foreach ($byte in $guidBytes) {
-            # Convert byte to 2-digit hexadecimal and append
-            $hexString += "\" + "{0:X2}" -f $byte
-        }
-    
-        return $hexString
-    }
-    function Get-MBAMKey {
-        #Queries the MBAM SOAP API to get a bitlocker recovery key.
-        [CmdletBinding()]
-        param (
-            [string]$KeyId,
-            [string]$mbamUrl
-        )
-        $soapBody = @"
-<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing">
-  <s:Header>
-    <wsa:Action>http://tempuri.org/IAdministrationService/GetRecoveryKey</wsa:Action>
-    <wsa:To>$mbamUrl</wsa:To>
-  </s:Header>
-  <s:Body>
-    <GetRecoveryKey xmlns="http://tempuri.org/">
-      <recoveryKeyId>$KeyId</recoveryKeyId>
-      <reasonCode>Other</reasonCode>
-    </GetRecoveryKey>
-  </s:Body>
-</s:Envelope>
-"@
-        # Perform the SOAP request using Invoke-WebRequest
-        try{
-            $keyResponse = Invoke-WebRequest -Uri $mbamUrl -Method POST -Body $soapBody -ContentType "application/soap+xml" -UseBasicParsing -UseDefaultCredentials -ErrorAction Stop
-            #([xml]$keyResponse.Content).Envelope.Body.GetRecoveryKeyResponse.GetRecoveryKeyResult
-            return ([xml]$keyResponse.Content).Envelope.Body.GetRecoveryKeyResponse.GetRecoveryKeyResult.RecoveryKey
-        }
-        catch{
-            return $null
-        }
-    }
-
-    #region SQL Reader Function - Function i found a long time ago to run sql queries using the built in sql functions.
-function Invoke-SqlDataReader {
-    
-        <#
-        .SYNOPSIS
-            Runs a select statement query against a SQL Server database.
-        
-        .DESCRIPTION
-            Invoke-SqlDataReader is a PowerShell function that is designed to query
-            a SQL Server database using a select statement without the need for the SQL
-            PowerShell module or snap-in being installed.
-        
-        .PARAMETER ServerInstance
-            The name of an instance of the SQL Server database engine. For default instances,
-            only specify the server name: 'ServerName'. For named instances, use the format
-            'ServerName\InstanceName'.
-        
-        .PARAMETER Database
-            The name of the database to query on the specified SQL Server instance.
-        
-        .PARAMETER Query
-            Specifies one Transact-SQL select statement query to be run.
-        
-        .PARAMETER QueryTimeout
-            Specifies how long to wait until the SQL Query times out. default 300 Seconds
-        
-        .PARAMETER Credential
-            SQL Authentication userid and password in the form of a credential object.
-        
-        .EXAMPLE
-            Invoke-SqlDataReader -ServerInstance Server01 -Database Master -Query '
-            select name, database_id, compatibility_level, recovery_model_desc from sys.databases'
-        
-        .EXAMPLE
-            'select name, database_id, compatibility_level, recovery_model_desc from sys.databases' |
-            Invoke-SqlDataReader -ServerInstance Server01 -Database Master
-        
-        .EXAMPLE
-            'select name, database_id, compatibility_level, recovery_model_desc from sys.databases' |
-            Invoke-SqlDataReader -ServerInstance Server01 -Database Master -Credential (Get-Credential)
-        
-        .INPUTS
-            String
-        
-        .OUTPUTS
-            DataRow
-        
-        .NOTES
-            Author:  Mike F Robbins
-            Website: http://mikefrobbins.com
-            Twitter: @mikefrobbins
-        #>
-        
-        [CmdletBinding()]
-        param (        
-            [Parameter(Mandatory)]
-            [string]$ServerInstance,
-        
-            [Parameter(Mandatory)]
-            [string]$Database,
-            
-            [Parameter(Mandatory,
-                        ValueFromPipeline)]
-            [string]$Query,
-            
-            [Parameter(Mandatory=$false,
-                        ValueFromPipeline=$false)]
-            [int]$QueryTimeout = 300,
-
-            [System.Management.Automation.Credential()]$Credential = [System.Management.Automation.PSCredential]::Empty
-        )
-        BEGIN {
-            $connection = New-Object -TypeName System.Data.SqlClient.SqlConnection
-        
-            if (-not($PSBoundParameters.Credential)) {
-                $connectionString = "Server=$ServerInstance;Database=$Database;Integrated Security=True;"
-            }
-            else {
-                $connectionString = "Server=$ServerInstance;Database=$Database;Integrated Security=False;"
-                $userid= $Credential.UserName -replace '^.*\\|@.*$'
-                ($password = $credential.Password).MakeReadOnly()
-                $sqlCred = New-Object -TypeName System.Data.SqlClient.SqlCredential($userid, $password)
-                $connection.Credential = $sqlCred
-            }
-            $connection.ConnectionString = $connectionString
-            $ErrorActionPreference = 'Stop'
-            try {
-                $connection.Open()
-                Write-Verbose -Message "Connection to the $($connection.Database) database on $($connection.DataSource) has been successfully opened."
-            }
-            catch {
-                Write-Error -Message "An error has occurred. Error details: $($_.Exception.Message)"
-            }
-            $ErrorActionPreference = 'Continue'
-            $command = $connection.CreateCommand()
-            $command.CommandTimeout = $QueryTimeout
-        }
-        PROCESS {
-            $command.CommandText = $Query
-            $ErrorActionPreference = 'Stop'
-            try {
-                $result = $command.ExecuteReader()
-            }
-            catch {
-                Write-Error -Message "An error has occured. Error Details: $($_.Exception.Message)"
-            }
-            $ErrorActionPreference = 'Continue'
-            if ($result) {
-                $dataTable = New-Object -TypeName System.Data.DataTable
-                $dataTable.Load($result)
-                $dataTable
-            }
-        }
-        END {
-            $connection.Close()
-        }
-    }
-    #endregion SQL Reader
 
     #Button to copy the key to the clipboard
-    $window.CopyRecoveryKey.add_Click{
-        ($window.View1.SelectedItems).RecoveryKey | Clip
+    $window.CopyLapsPass.add_Click{
+        ($window.View1.SelectedItems).Password | Clip
     }
 
     # Button connects to graph api using the Graph powershell sdk.
     $window.ConnectGraph.add_Click{
         $Scopes = @(
-            "User.Read.All"
-            "BitlockerKey.Read.All"
-            "DeviceManagementManagedDevices.Read.All"
+            'Device.Read.All',
+            'DeviceLocalCredential.ReadBasic.All',
+            'DeviceLocalCredential.Read.All',
+            'DeviceManagementManagedDevices.Read.All'
         )
         Connect-MgGraph -Scopes $Scopes -NoWelcome
         If (Test-GraphConnection){

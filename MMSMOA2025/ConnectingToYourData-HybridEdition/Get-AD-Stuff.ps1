@@ -29,6 +29,12 @@ function Convert-GuidToHexArray {
 }
 #endregion Data Manipulation tools
 
+#Default doesn't load much.
+$AdComputers = Get-ADComputer -Filter *
+$AdComputers.Count
+$AdComputers[0]
+
+
 #region Get-Adcomputer From ActiveDirectory PowerShell Module
 $ADProperties = @(
     "name"
@@ -47,6 +53,8 @@ $ADProperties = @(
 )
 
 $AdComputers = Get-ADComputer -Filter * -Properties $ADProperties
+$AdComputers.Count
+$AdComputers[0]
 
 
 [System.Collections.Generic.List[object]]$computers = @()
@@ -67,6 +75,8 @@ foreach ($comp in $AdComputers){
             Enabled                = $comp.Enabled
         })
 }
+$computers.Count
+$computers[0]
 #endregion Get-Adcomputer
 
 #region Using a .Net DirectorySearcher
@@ -91,6 +101,10 @@ $searcher.PropertiesToLoad.Add("distinguishedName")
 $searcher.PropertiesToLoad.Add("whenCreated")
 $searcher.PageSize = 1000;
 $results = $searcher.FindAll()
+
+$results.Count
+$results[0]
+$results[0].Properties
 
 #some of the properties don't load in a very human readable format.  So, lets format them.
 [System.Collections.Generic.List[object]]$computers = @() #lists are more efficient than a array.
@@ -119,7 +133,7 @@ foreach ($result in $results) {
             OperatingSystem    = $OS
             OSVersion          = $OSV
             LastLogon          = $lastlogon
-            ObjectGUID         = (Convert-ADGuid -bytes $computer.objectguid[0])
+            ObjectGUID         = ([guid]::new($computer.objectguid[0])).Guid
             ObjectSid          = $sid
             CreatedDate        = $created
             DistinguishedName  = $computer.distinguishedname[0]
@@ -129,6 +143,7 @@ foreach ($result in $results) {
         }
     )
 }
+$computers[0]
 $computers | Format-Table
 #endregion Using a .Net DirectorySearcher
 
@@ -162,7 +177,7 @@ foreach ($result in $results) {
     
     $BitlockerKeys.Add([PSCustomObject]@{
             RecoveryPassword = $recoveryPassword
-            KeyId            = Convert-ADGuid -bytes $recoveryGuid
+            KeyId            = ([guid]::new($recoveryGuid)).Guid
             ComputerName     = $computerName
             DN               = $distinguishedName
         })

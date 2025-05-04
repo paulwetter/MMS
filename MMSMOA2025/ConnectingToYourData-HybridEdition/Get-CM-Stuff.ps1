@@ -4,11 +4,21 @@ $SCCMSQLServer = "WS-CM1.wetter.wetterssource.com"
 $SiteCode = "WS1"  # Replace with your SCCM site code
 $CmDatabase = "CM_$SiteCode"
 
+"ConfigMgr Server Name:     $SCCMServer`nConfigMgr Sql Server Name: $SCCMSQLServer`nConfigMgr Site Code:       $SiteCode`nConfigMgr Database Name:   $CmDatabase"
+
 #region CM CmdLets
 
 ##https://learn.microsoft.com/en-us/powershell/module/configurationmanager/?view=sccm-ps
+Get-Module -Name ConfigurationManager |FT ModuleType,Version,Name,ModuleBase
 #Import CM Powershell module and change to the CM Site drive
 Import-Module ConfigurationManager
+#List Commands in the module
+#get-command -Module ConfigurationManager | Select-Object -Property CommandType,Name,Version,Source
+
+"`nCount of Commands:"
+(get-command -Module ConfigurationManager).Count
+
+#change to site "WS1:" in my case
 $site = (Get-PSDrive | where {$_.Provider.Name -eq 'CMSite'}).Name
 cd "$($site):"
 
@@ -17,31 +27,39 @@ $Devices = Get-CMDevice
 $Devices[0]
 $Devices.Name
 
+
+#It does return the AAD Device id though.
 $Devices.foreach({
     [PSCustomObject]@{
         Name = $_.Name
         AADDeviceID = $_.AADDeviceID
         ObjectGuid = $_.ObjectGUID
+        Online = $_.CNIsOnline
     }
 })
 #AADDeviceID will be useful for devices that are registered to MEID as the MEID Guid == AD ObjectGuid
+#Get-CMDevice == v_CombinedDeviceResources
+
 #endregion
 
 
 #region Query all computers from CM with WMI
+#Start in WMI Explorer
 
 # Define the WMI namespace
 $namespace = "ROOT\sms\site_$SiteCode"
+"WMI Namespace: $namespace"
 
 $devices = Get-WmiObject -Namespace $namespace -Class SMS_R_System -ComputerName $SCCMServer
 
 # Display the device names
-$devices | Select-Object *
+$devices[0] | Select-Object *
 
 #Some values need to be converted to readable text.  Some guids for example are stored as byte arrays.
 $devices.foreach({
     [PSCustomObject]@{
         Name = $_.Name
+        AADDeviceID = $_.AADDeviceID
         ObjectGuid = $_.ObjectGUID
     }
 })
@@ -50,6 +68,7 @@ $devices.foreach({
 $devices.foreach({
     [PSCustomObject]@{
         Name = $_.Name
+        AADDeviceID = $_.AADDeviceID
         ObjectGuid = [guid]::new($_.ObjectGUID).Guid
     }
 })
@@ -58,10 +77,12 @@ $devices.foreach({
 
 #region Admin Service
 # Define the SCCM Admin Service URL
-$AdminServiceUrl = "https://$SCCMServer/AdminService/"
+$AdminServiceUrl = "https://$SCCMServer/AdminService"
+openwith "$AdminServiceUrl"
 
 # Define the endpoint for retrieving device information
 $endpoint = "$AdminServiceUrl/wmi/SMS_R_System"
+openwith $endpoint
 
 #Headers to send and return proper data type
 $headers = @{
@@ -76,6 +97,7 @@ $response = Invoke-RestMethod -Uri $endpoint -Method Get -Headers $headers -UseD
 $response.value.foreach({
     [PSCustomObject]@{
         Name = $_.Name
+        AADDeviceID = $_.AADDeviceID
         ObjectGuid = $_.ObjectGUID
     }
 })
@@ -84,6 +106,7 @@ $response.value.foreach({
 $response.value.foreach({
     [PSCustomObject]@{
         Name = $_.Name
+        AADDeviceID = $_.AADDeviceID
         ObjectGuid = [guid]::new([System.Convert]::FromBase64String($_.ObjectGUID))
     }
 })
@@ -221,14 +244,12 @@ function Invoke-SqlDataReader {
 
 #region SQL
 
-$CDRQuery = @'
-SELECT *
-  FROM [v_R_System]
-'@
+$CDRQuery = 'SELECT * FROM [v_R_System]'
 
 
 $SQLresults = Invoke-SqlDataReader -ServerInstance $SCCMSQLServer -Database $CmDatabase -Query $CDRQuery
-$SQLresults
+$SQLresults.Count
+$SQLresults[0]
 
 #Like the others, we need to manipulate the guid...
 
@@ -236,6 +257,7 @@ $SQLresults
 $SQLresults.foreach({
     [PSCustomObject]@{
         Name = $_.Name0
+        AADDeviceID = $_.AADDeviceID
         ObjectGuid = $_.Object_GUID0
     }
 })
@@ -244,6 +266,7 @@ $SQLresults.foreach({
 $SQLresults.foreach({
     [PSCustomObject]@{
         Name = $_.Name0
+        AADDeviceID = $_.AADDeviceID
         ObjectGuid = [guid]::new($_.Object_GUID0)
     }
 })
